@@ -1,0 +1,23 @@
+Step size: 2e-5
+Training steps: 20000
+Batch size: 50
+Padding: Original image size
+
+14 rightmost columns of MNIST hidden
+
+1 convolutional layer (x by x by 32 filters), 1 fully connected layer, 1 read out layer
+
+*Test 1: 3 by 3 filter*
+Last batch mse: 0.0431091
+Test mse: 0.0443726
+
+*Test 2: 5 by 5 filter*
+Last batch mse: 0.0444762
+Test mse: 0.0452108
+
+*Test 3: 7 by 7 filter*
+Last batch mse: 0.0482159
+Test mse: 0.047171
+
+
+
