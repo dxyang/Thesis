@@ -55,11 +55,16 @@ def hideData(data, mask):
     return newData, data[x_idx, :], data[y_idx, :]
 
 # let's get our data
-def returnData():
+def returnData(endBuffer):
     train = np.load('MNISTcwtrain1000.npy')
+    #train = np.load('ReducedMNIST_1.npy')
     train = train.astype(float)/255
     test = np.load('MNISTcwtest100.npy')
     test = test.astype(float)/255
+
+    if (endBuffer):
+        train = np.concatenate((train, train[:, 0:50]), axis = 1)
+        #test = np.concatenate((test, test[:, 0:50]), axis = 1)
 
     size = train.shape[0]
     n_train = train.shape[1]
