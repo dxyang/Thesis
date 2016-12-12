@@ -8,10 +8,13 @@ train_hideRight, Xtrain_hideRight, Ytrain_hideRight, \
 test_hideRight, Xtest_hideRight, Ytest_hideRight = mnist_preprocessing.returnData(endBuffer=True)
 
 def train(n_iterations=20000):
-  net = mnist_tf.create_network()
+  #net = mnist_tf.create_network_basic()
+  #net = mnist_tf.create_network_batchnorm()
+  #net = mnist_tf.create_network_fullyconnected()
+  net = mnist_tf.create_network_autoencoder()
   with tf.Session() as sess:
-    #summary_writer = tf.train.SummaryWriter(
-    #                    os.getcwd(), graph=sess.graph)
+    summary_writer = tf.train.SummaryWriter(
+                        os.getcwd() + "/tb_out/", graph=sess.graph)
 
     sess.run(tf.initialize_all_variables())
 
@@ -19,10 +22,6 @@ def train(n_iterations=20000):
       leftIdx = (i*50)%10000
       rightIdx = leftIdx + 50
 
-      #if (rightIdx == 0):
-      #  batch_X = Xtrain_hideRight[:, leftIdx:].T
-      #  batch_Y = Ytrain_hideRight[:, leftIdx:].T
-      #else:
       batch_X = Xtrain_hideRight[:, leftIdx:rightIdx].T
       batch_Y = Ytrain_hideRight[:, leftIdx:rightIdx].T
 
@@ -32,15 +31,15 @@ def train(n_iterations=20000):
 
       if i%100 == 0:
         '''
-        summary = sess.run(net.summary_op, 
+        summary, image_summary = sess.run([net.summary_op, net.image_summary_op], 
                            feed_dict={net.x: batch_X, 
                                       net.y_: batch_Y, 
                                       net.keep_prob: 1.0})
-        image_summary = sess.run(net.image_summary_op, 
-                                 feed_dict={net.x: batch_X, 
-                                            net.y_: batch_Y, 
-                                            net.keep_prob: 1.0})
-
+        #image_summary = sess.run(net.image_summary_op, 
+        #                         feed_dict={net.x: batch_X, 
+        #                                    net.y_: batch_Y, 
+        #                                    net.keep_prob: 1.0})
+        
         summary_writer.add_summary(summary, i)
         summary_writer.add_summary(image_summary, i)
         '''

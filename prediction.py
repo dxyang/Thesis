@@ -8,10 +8,11 @@ train_hideRight, Xtrain_hideRight, Ytrain_hideRight, \
 test_hideRight, Xtest_hideRight, Ytest_hideRight = mnist_preprocessing.returnData(endBuffer=False)
 
 def predict():
-  net = mnist_tf.create_network()
+  #net = mnist_tf.create_network_basic()
+  #net = mnist_tf.create_network_batchnorm()
+  #net = mnist_tf.create_network_fullyconnected()
+  net = mnist_tf.create_network_autoencoder()
   with tf.Session() as sess:
-    #sess.run(tf.initialize_all_variables())
-
     # Restore variables from disk.
     net.saver.restore(sess, os.getcwd() + "/tmp/model.ckpt")
     print("Model restored.")

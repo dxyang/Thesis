@@ -57,7 +57,6 @@ def hideData(data, mask):
 # let's get our data
 def returnData(endBuffer):
     train = np.load('MNISTcwtrain1000.npy')
-    #train = np.load('ReducedMNIST_1.npy')
     train = train.astype(float)/255
     test = np.load('MNISTcwtest100.npy')
     test = test.astype(float)/255
