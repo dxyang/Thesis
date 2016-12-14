@@ -567,6 +567,7 @@ def create_network_autoencoder(learning_rate=1e-3):
 
     # layer 0
     x = tf.placeholder(tf.float32, shape=[None, 784])
+    y = tf.placeholder(tf.float32, shape=[None, 784])
     x_image = tf.reshape(x, [-1,28,28,1])
     
     # ---- encoder ----
@@ -593,8 +594,8 @@ def create_network_autoencoder(learning_rate=1e-3):
 
     # ---- fully connected layer ----
     dim = 7 * 7 * 64
-    W_e_fc1 = weight_variable([dim, 1024])
-    b_e_fc1 = bias_variable([1024])
+    W_e_fc1 = weight_variable([dim, 2048])
+    b_e_fc1 = bias_variable([2048])
 
     h_e_convs_flat = tf.reshape(h_pool2, [-1, dim])
     h_e_fc1 = tf.nn.relu(tf.matmul(h_e_convs_flat, W_e_fc1) + b_e_fc1)
@@ -604,7 +605,7 @@ def create_network_autoencoder(learning_rate=1e-3):
     h_e_fc1_drop = tf.nn.dropout(h_e_fc1, keep_prob)
 
     # decoder input
-    W_d_fc1 = weight_variable([1024, dim])
+    W_d_fc1 = weight_variable([2048, dim])
     b_d_fc1 = bias_variable([dim])
     h_d_fc1 = tf.nn.relu(tf.matmul(h_e_fc1_drop, W_d_fc1) + b_d_fc1)
     h_d_fc1_drop = tf.nn.dropout(h_d_fc1, keep_prob)
@@ -660,7 +661,7 @@ def create_network_autoencoder(learning_rate=1e-3):
     y_conv = tf.reshape(h_d_conv1, [-1, 784])
 
     #cost = tf.reduce_mean(tf.mul(y_conv - y_, y_conv - y_)) #+ 0.0001*tf.reduce_sum(tf.abs(W_fc2))
-    cost = tf.nn.l2_loss(y_conv - x)
+    cost = tf.nn.l2_loss(y_conv - y)
     train_step = tf.train.AdamOptimizer(learning_rate).minimize(cost)
 
     # Add ops to save and restore all the variables
