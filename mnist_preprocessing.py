@@ -54,8 +54,8 @@ def hideData(data, mask):
     
     return newData, data[x_idx, :], data[y_idx, :]
 
-# let's get our data
-def returnData(endBuffer):
+# let's get the data for halves
+def returnHalfData(endBuffer):
     train = np.load('MNISTcwtrain1000.npy')
     train = train.astype(float)/255
     test = np.load('MNISTcwtest100.npy')
@@ -77,3 +77,24 @@ def returnData(endBuffer):
     test_hideRight, Xtest_hideRight, Ytest_hideRight = hideData(test, generateColumnMask(14))
 
     return train_hideRight, Xtrain_hideRight, Ytrain_hideRight, test_hideRight, Xtest_hideRight, Ytest_hideRight
+
+# let's get the data
+def returnData(endBuffer):
+    train = np.load('MNISTcwtrain1000.npy')
+    train = train.astype(float)/255
+    test = np.load('MNISTcwtest100.npy')
+    test = test.astype(float)/255
+
+    if (endBuffer):
+        train = np.concatenate((train, train[:, 0:50]), axis = 1)
+        #test = np.concatenate((test, test[:, 0:50]), axis = 1)
+
+    size = train.shape[0]
+    n_train = train.shape[1]
+    n_test = test.shape[1]
+
+    print '----MNIST dataset loaded----'
+    print 'Train data: %d x %d' %(size, n_train)
+    print 'Test data: %d x %d' %(size, n_test)
+
+    return train, test
