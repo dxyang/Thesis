@@ -69,7 +69,8 @@ def train(n_iterations=20000):
   train_hideRight, Xtrain_hideRight, Ytrain_hideRight, \
   test_hideRight, Xtest_hideRight, Ytest_hideRight = mnist_preprocessing.returnHalfData(endBuffer=True)
 
-  train_mix, test_mix, train_truth, test_truth = mnist_preprocessing.returnMixData(endBuffer = True)
+  X_input = Xtrain_hideRight
+  Y_output = train
 
   net = mnist_tf.create_network_autoencoder()
 
@@ -77,17 +78,11 @@ def train(n_iterations=20000):
     sess.run(tf.initialize_all_variables())
 
     for i in range(n_iterations):
-      #leftIdx = (i*50)%10000
-      #rightIdx = leftIdx + 50
-
-      #batch_X = train_hideRight[:, leftIdx:rightIdx].T
-      #batch_Y = train[:, leftIdx:rightIdx].T
-
-      leftIdx = (i*50)%20000
+      leftIdx = (i*50)%10000
       rightIdx = leftIdx + 50
 
-      batch_X = train_mix[:, leftIdx:rightIdx].T
-      batch_Y = train_truth[:, leftIdx:rightIdx].T
+      batch_X = X_input[:, leftIdx:rightIdx].T
+      batch_Y = Y_output[:, leftIdx:rightIdx].T
 
       sess.run(net.train_step, feed_dict={net.x: batch_X,
                                           net.y: batch_Y, 
@@ -100,21 +95,12 @@ def train(n_iterations=20000):
         print("step %d, batch avg l2 %g"%(i, train_cost))
 
     # Test and Training Accuracies
-    '''
-    test_cost = sess.run(net.cost, feed_dict={net.x: test_hideRight.T,
+    test_cost = sess.run(net.cost, feed_dict={net.x: Xtest_hideRight.T,
                                               net.y: test.T, 
                                               net.keep_prob: 1.0})
 
-    training_cost = sess.run(net.cost, feed_dict={net.x:train_hideRight[:, :10000].T, 
-                                                  net.y:train[:, :10000].T,
-                                                  net.keep_prob: 1.0})
-    '''
-    test_cost = sess.run(net.cost, feed_dict={net.x: test_mix.T,
-                                              net.y: test_truth.T, 
-                                              net.keep_prob: 1.0})
-
-    training_cost = sess.run(net.cost, feed_dict={net.x:train_mix[:, :10000].T, 
-                                                  net.y:train_truth[:, :10000].T,
+    training_cost = sess.run(net.cost, feed_dict={net.x:X_input[:, :10000].T, 
+                                                  net.y:Y_output[:, :10000].T,
                                                   net.keep_prob: 1.0})
 
     print("Final Test Cost %g" %test_cost)
