@@ -560,15 +560,15 @@ def create_network_kinda_autoencoder(learning_rate=1e-3):
 
   return Net()
 
-def create_network_autoencoder(learning_rate=1e-3):
+def create_network_autoencoder(bottleneck, learning_rate=1e-3):
   class Net:
     epsilon = 1e-3      # define small epsilon for batch normalization
     keep_prob = tf.placeholder(tf.float32)      # keep prob for dropout
 
     # layer 0
-    x = tf.placeholder(tf.float32, shape=[None, 392])
+    x = tf.placeholder(tf.float32, shape=[None, 784])
     y = tf.placeholder(tf.float32, shape=[None, 784])
-    x_image = tf.reshape(x, [-1,14,28,1])
+    x_image = tf.reshape(x, [-1,28,28,1])
     
     # ---- encoder ----
     # layer 1
@@ -583,19 +583,12 @@ def create_network_autoencoder(learning_rate=1e-3):
     b_e_conv2 = bias_variable([64])
     h_e_conv2 = tf.nn.relu(conv2d(h_pool1, W_e_conv2) + b_e_conv2)
 
-    h_pool2 = max_pool_2x2(h_e_conv2) # 7 x 7 x 64 features
-
-    '''
-    # layer 3
-    W_e_conv3 = weight_variable([5, 5, 64, 64])
-    b_e_conv3 = bias_variable([64])
-    h_e_conv3 = tf.nn.relu(conv2d_nopad(h_e_conv2, W_e_conv3) + b_e_conv3)
-    '''
+    h_pool2 = max_pool_2x2(h_e_conv2)
 
     # ---- fully connected layer ----
-    dim_fc_in = 4 * 7 * 64
-    W_e_fc1 = weight_variable([dim_fc_in, 256])
-    b_e_fc1 = bias_variable([256])
+    dim_fc_in =  7 * 7 * 64 #4 * 7 * 64
+    W_e_fc1 = weight_variable([dim_fc_in, bottleneck])
+    b_e_fc1 = bias_variable([bottleneck])
 
     h_e_convs_flat = tf.reshape(h_pool2, [-1, dim_fc_in])
     h_e_fc1 = tf.nn.relu(tf.matmul(h_e_convs_flat, W_e_fc1) + b_e_fc1)
@@ -605,27 +598,14 @@ def create_network_autoencoder(learning_rate=1e-3):
     h_e_fc1_drop = tf.nn.dropout(h_e_fc1, keep_prob)
 
     # decoder input
-    dim_fc_out = 7 * 7 * 64
-    W_d_fc1 = weight_variable([256, dim_fc_out])
+    dim_fc_out = 7 * 7 * 64  #4 * 7 * 64
+    W_d_fc1 = weight_variable([bottleneck, dim_fc_out])
     b_d_fc1 = bias_variable([dim_fc_out])
     h_d_fc1 = tf.nn.relu(tf.matmul(h_e_fc1_drop, W_d_fc1) + b_d_fc1)
     h_d_fc1_drop = tf.nn.dropout(h_d_fc1, keep_prob)
 
-    decoder_input = tf.reshape(h_d_fc1_drop, [-1, 7, 7, 64])
+    decoder_input = tf.reshape(h_d_fc1_drop, [-1, 7, 7, 64]) #tf.reshape(h_d_fc1_drop, [-1, 4, 7, 64])
 
-    '''
-    # layer 3
-    W_e_conv3 = weight_variable([3, 3, 32, 32])
-    b_e_conv3 = bias_variable([32])
-    h_e_conv3 = tf.nn.relu(conv2d(h_e_conv2, W_e_conv3) + b_e_conv3)
-    '''
-
-    '''
-    # layer 4
-    W_e_conv4 = weight_variable([3, 3, 32, 32])
-    b_e_conv4 = bias_variable([32])
-    h_e_conv4 = tf.nn.relu(conv2d(h_e_conv3, W_e_conv4) + b_e_conv4)
-    '''
 
     # ---- decoder ----
     strides=[1, 2, 2, 1]
@@ -643,23 +623,27 @@ def create_network_autoencoder(learning_rate=1e-3):
     h_d_deconv1 = tf.nn.conv2d_transpose(h_d_conv2, W_d_conv1, output_shape=[batch_size, 28, 28, 1], strides=strides, padding='SAME')
     h_d_conv1 = tf.nn.relu(h_d_deconv1 + b_d_conv1)
     
-    '''
-    # layer 3
-    W_d_conv3 = weight_variable([3, 3, 32, 32])
-    b_d_conv3 = bias_variable([1])
-    h_d_deconv3 = tf.nn.conv2d_transpose(h_d_conv2, W_d_conv3, output_shape=[batch_size, 14, 28, 32], strides=strides, padding='SAME')
-    h_d_conv3 = tf.nn.relu(h_d_deconv3 + b_d_conv3)
-    '''
-
-    '''
-    # layer 4
-    W_d_conv4 = weight_variable([3, 3, 32, 32])
-    b_d_conv4 = bias_variable([1])
-    h_d_deconv4 = tf.nn.conv2d_transpose(h_d_conv3, W_d_conv4, output_shape=[batch_size, 14, 28, 32], strides=strides, padding='SAME')
-    h_d_conv4 = tf.nn.relu(h_d_deconv4 + b_d_conv4)
-    '''
-
     y_conv = tf.reshape(h_d_conv1, [-1, 784])
+
+    '''
+    # ---- decoder ----
+    strides=[1, 2, 2, 1]
+    batch_size = tf.shape(x)[0]
+
+    # layer 2
+    W_d_conv2 = weight_variable([5, 5, 32, 64])
+    b_d_conv2 = bias_variable([32])
+    h_d_deconv2 = tf.nn.conv2d_transpose(decoder_input, W_d_conv2, output_shape=[batch_size, 7, 14, 32], strides=strides, padding='SAME')
+    h_d_conv2 = tf.nn.relu(h_d_deconv2 + b_d_conv2)
+
+    # layer 1
+    W_d_conv1 = weight_variable([5, 5, 1, 32])
+    b_d_conv1 = bias_variable([1])
+    h_d_deconv1 = tf.nn.conv2d_transpose(h_d_conv2, W_d_conv1, output_shape=[batch_size, 14, 28, 1], strides=strides, padding='SAME')
+    h_d_conv1 = tf.nn.relu(h_d_deconv1 + b_d_conv1)
+    
+    y_conv = tf.reshape(h_d_conv1, [-1, 392])
+    '''
 
     #cost = tf.reduce_mean(tf.mul(y_conv - y_, y_conv - y_)) #+ 0.0001*tf.reduce_sum(tf.abs(W_fc2))
     cost = tf.reduce_mean(tf.mul(y_conv - y, y_conv - y))

@@ -125,6 +125,7 @@ def returnSquareData(endBuffer):
 
     return train_hideMiddle, Xtrain_hideMiddle, Ytrain_hideMiddle, test_hideMiddle, Xtest_hideMiddle, Ytest_hideMiddle
 
+# mix data half square in middle removed, half rightside removed
 def returnMixData(endBuffer):
   train_hideRight, Xtrain_hideRight, Ytrain_hideRight, \
   test_hideRight, Xtest_hideRight, Ytest_hideRight = returnHalfData(endBuffer=False)

@@ -64,25 +64,34 @@ def train_original(n_iterations=1000):
     save_path = net.saver.save(sess, os.getcwd() + "/tmp/model.ckpt")
     print("Model saved in file: %s" % save_path)
 
-def train(n_iterations=20000):
-  train, test = mnist_preprocessing.returnData(endBuffer=True)
+def train(bottleneck, n_iterations=20000):
+  train, test = mnist_preprocessing.returnData(endBuffer=False)
   train_hideRight, Xtrain_hideRight, Ytrain_hideRight, \
-  test_hideRight, Xtest_hideRight, Ytest_hideRight = mnist_preprocessing.returnHalfData(endBuffer=True)
+  test_hideRight, Xtest_hideRight, Ytest_hideRight = mnist_preprocessing.returnHalfData(endBuffer=False)
 
-  X_input = Xtrain_hideRight
+  idxs = np.arange(10000)
+
+  X_input = train_hideRight
   Y_output = train
 
-  net = mnist_tf.create_network_autoencoder()
+  test_X_input = test_hideRight
+  test_Y_output = test
+
+  net = mnist_tf.create_network_autoencoder(bottleneck=bottleneck)
 
   with tf.Session() as sess:
     sess.run(tf.initialize_all_variables())
 
     for i in range(n_iterations):
+      if i%200 == 0:
+        np.random.shuffle(idxs)
+        bufferedIdxs = np.concatenate((idxs, idxs[0:50]))
+
       leftIdx = (i*50)%10000
       rightIdx = leftIdx + 50
 
-      batch_X = X_input[:, leftIdx:rightIdx].T
-      batch_Y = Y_output[:, leftIdx:rightIdx].T
+      batch_X = X_input[:, bufferedIdxs[leftIdx:rightIdx]].T
+      batch_Y = Y_output[:, bufferedIdxs[leftIdx:rightIdx]].T
 
       sess.run(net.train_step, feed_dict={net.x: batch_X,
                                           net.y: batch_Y, 
@@ -91,24 +100,56 @@ def train(n_iterations=20000):
       if i%100 == 0:
         train_cost = sess.run(net.cost, feed_dict={net.x: batch_X,
                                                    net.y: batch_Y, 
-                                                   net.keep_prob: 0.5})
+                                                   net.keep_prob: 1.0})
         print("step %d, batch avg l2 %g"%(i, train_cost))
 
+      if (i==5000):
+        train_cost = sess.run(net.cost, feed_dict={net.x: batch_X,
+                                                   net.y: batch_Y, 
+                                                   net.keep_prob: 1.0})
+        if train_cost > 0.05:
+          print("Not training :(")
+          break
+
     # Test and Training Accuracies
-    test_cost = sess.run(net.cost, feed_dict={net.x: Xtest_hideRight.T,
-                                              net.y: test.T, 
+    testing_cost = sess.run(net.cost, feed_dict={net.x: test_X_input.T,
+                                              net.y: test_Y_output.T, 
                                               net.keep_prob: 1.0})
 
-    training_cost = sess.run(net.cost, feed_dict={net.x:X_input[:, :10000].T, 
-                                                  net.y:Y_output[:, :10000].T,
+    training_cost = sess.run(net.cost, feed_dict={net.x:X_input.T, 
+                                                  net.y:Y_output.T,
                                                   net.keep_prob: 1.0})
 
-    print("Final Test Cost %g" %test_cost)
+    print("Final Test Cost %g" %testing_cost)
     print("Final Training Cost %g" %training_cost)
 
     # Save the variables to disk.
     save_path = net.saver.save(sess, os.getcwd() + "/tmp/model.ckpt")
     print("Model saved in file: %s" % save_path)
 
+    return testing_cost, training_cost
+
 #train_original()
-train()
+#train()
+
+'''
+numTrials = 1
+test_costs = np.zeros(numTrials)
+train_costs = np.zeros(numTrials)
+
+for i in range(numTrials):
+  test_costs[i], train_costs[i] = train()
+  print test_costs
+  print train_costs
+'''
+
+numTrials = 1
+test_costs = np.zeros(numTrials)
+train_costs = np.zeros(numTrials)
+
+for i in range(numTrials):
+  bneckSize = 128
+  print '------------ %d -----------' %bneckSize
+  test_costs[i], train_costs[i] = train(bottleneck=bneckSize)
+  print test_costs
+  print train_costs
