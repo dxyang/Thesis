@@ -6,7 +6,7 @@ import mnist_preprocessing
 
 def train_original(n_iterations=1000):
   train_hideRight, Xtrain_hideRight, Ytrain_hideRight, \
-  test_hideRight, Xtest_hideRight, Ytest_hideRight = mnist_preprocessing.returnHalfData(endBuffer=True)
+  test_hideRight, Xtest_hideRight, Ytest_hideRight = mnist_preprocessing.returnHalfData()
 
   #net = mnist_tf.create_network_basic()
   #net = mnist_tf.create_network_batchnorm()
@@ -64,17 +64,20 @@ def train_original(n_iterations=1000):
     save_path = net.saver.save(sess, os.getcwd() + "/tmp/model.ckpt")
     print("Model saved in file: %s" % save_path)
 
-def train(bottleneck, n_iterations=20000):
-  train, test = mnist_preprocessing.returnData(endBuffer=False)
-  train_hideRight, Xtrain_hideRight, Ytrain_hideRight, \
-  test_hideRight, Xtest_hideRight, Ytest_hideRight = mnist_preprocessing.returnHalfData(endBuffer=False)
+def train(squareSideLength, ncols, bottleneck, n_iterations=20000):
+  train, test = mnist_preprocessing.returnData()
+  #train_hideRight, Xtrain_hideRight, Ytrain_hideRight, \
+  #test_hideRight, Xtest_hideRight, Ytest_hideRight = mnist_preprocessing.returnHalfData(ncols=ncols)
+
+  train_hideMiddle, Xtrain_hideMiddle, Ytrain_hideMiddle, \
+  test_hideMiddle, Xtest_hideMiddle, Ytest_hideMiddle = mnist_preprocessing.returnSquareData(squareSideLength=squareSideLength)
 
   idxs = np.arange(10000)
 
-  X_input = train_hideRight
+  X_input = train_hideMiddle
   Y_output = train
 
-  test_X_input = test_hideRight
+  test_X_input = test_hideMiddle
   test_Y_output = test
 
   net = mnist_tf.create_network_autoencoder(bottleneck=bottleneck)
@@ -143,13 +146,15 @@ for i in range(numTrials):
   print train_costs
 '''
 
+
 numTrials = 1
-test_costs = np.zeros(numTrials)
-train_costs = np.zeros(numTrials)
+test_costs = np.zeros((numTrials,5))
+train_costs = np.zeros((numTrials,5))
 
 for i in range(numTrials):
-  bneckSize = 128
-  print '------------ %d -----------' %bneckSize
-  test_costs[i], train_costs[i] = train(bottleneck=bneckSize)
-  print test_costs
-  print train_costs
+  for j in range(5):
+    sideLength = (i+3)*2
+    print '------------ Square: %d x %d -----------' %(sideLength, sideLength)
+    test_costs[i][j], train_costs[i][j] = train(squareSideLength=sideLength, ncols = 0, bottleneck=128)
+    print test_costs
+    print train_costs

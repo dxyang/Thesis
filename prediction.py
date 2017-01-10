@@ -6,7 +6,7 @@ import mnist_tf
 
 def predict_original():
   train_hideRight, Xtrain_hideRight, Ytrain_hideRight, \
-  test_hideRight, Xtest_hideRight, Ytest_hideRight = mnist_preprocessing.returnHalfData(endBuffer=False)
+  test_hideRight, Xtest_hideRight, Ytest_hideRight = mnist_preprocessing.returnHalfData()
 
   #net = mnist_tf.create_network_basic()
   #net = mnist_tf.create_network_batchnorm()
@@ -31,14 +31,17 @@ def predict_original():
 
 
 def predict():
-  train, test = mnist_preprocessing.returnData(endBuffer=False)
+  train, test = mnist_preprocessing.returnData()
 
   train_hideRight, Xtrain_hideRight, Ytrain_hideRight, \
-  test_hideRight, Xtest_hideRight, Ytest_hideRight = mnist_preprocessing.returnHalfData(endBuffer=False)
+  test_hideRight, Xtest_hideRight, Ytest_hideRight = mnist_preprocessing.returnHalfData(ncols=14)
   
-  Xtrain = train_hideRight
+  train_hideMiddle, Xtrain_hideMiddle, Ytrain_hideMiddle, \
+  test_hideMiddle, Xtest_hideMiddle, Ytest_hideMiddle = mnist_preprocessing.returnSquareData(squareSideLength=8)
+
+  Xtrain = train_hideMiddle
   Ytrain = train
-  Xtest = test_hideRight
+  Xtest = test_hideMiddle
   Ytest = test
 
   net = mnist_tf.create_network_autoencoder(bottleneck=128)
@@ -72,7 +75,7 @@ def predict():
     predicted_test = sess.run(net.y_conv, feed_dict={net.x:Xtest.T, net.y:Ytest.T, net.keep_prob: 1.0})
     predicted_train = sess.run(net.y_conv, feed_dict={net.x:Xtrain.T, net.y:Ytrain.T, net.keep_prob: 1.0})
 
-    np.save('predictedTest_BlankedToOriginal.npy', predicted_test.T)
-    np.save('predictedTrain_BlankedToOriginal.npy', predicted_train.T)
+    np.save('predictedTest.npy', predicted_test.T)
+    np.save('predictedTrain.npy', predicted_train.T)
 
 predict()
