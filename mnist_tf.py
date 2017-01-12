@@ -5,6 +5,7 @@
 import tensorflow as tf
 import numpy as np
 import os
+import mnist_preprocessing
 
 # helper functions
 def weight_variable(shape):
@@ -568,7 +569,7 @@ def create_network_autoencoder(bottleneck, learning_rate=1e-3):
     # layer 0
     x = tf.placeholder(tf.float32, shape=[None, 784])
     y = tf.placeholder(tf.float32, shape=[None, 784])
-    x_image = tf.reshape(x, [-1,28,28,1])
+    x_image = tf.reshape(x, [-1,28,28,1]) # [-1,14,28,1]
     
     # ---- encoder ----
     # layer 1
@@ -606,7 +607,6 @@ def create_network_autoencoder(bottleneck, learning_rate=1e-3):
 
     decoder_input = tf.reshape(h_d_fc1_drop, [-1, 7, 7, 64]) #tf.reshape(h_d_fc1_drop, [-1, 4, 7, 64])
 
-
     # ---- decoder ----
     strides=[1, 2, 2, 1]
     batch_size = tf.shape(x)[0]
@@ -625,6 +625,13 @@ def create_network_autoencoder(bottleneck, learning_rate=1e-3):
     
     y_conv = tf.reshape(h_d_conv1, [-1, 784])
 
+    '''
+    maskVec = mnist_preprocessing.generateColumnMask(14)
+    maskVecBool = np.ones((784,1)) == (np.ones((784,1)) - maskVec)
+    matrixMasks = np.repeat(maskVecBool, 50, axis=1)
+    y_conv_masked = tf.boolean_mask(y_conv, matrixMasks.T)
+    y_masked = tf.boolean_mask(y, matrixMasks.T)
+    '''
     '''
     # ---- decoder ----
     strides=[1, 2, 2, 1]
@@ -645,8 +652,10 @@ def create_network_autoencoder(bottleneck, learning_rate=1e-3):
     y_conv = tf.reshape(h_d_conv1, [-1, 392])
     '''
 
+
     #cost = tf.reduce_mean(tf.mul(y_conv - y_, y_conv - y_)) #+ 0.0001*tf.reduce_sum(tf.abs(W_fc2))
     cost = tf.reduce_mean(tf.mul(y_conv - y, y_conv - y))
+    #cost = tf.reduce_mean(tf.mul(y_conv_masked - y_masked, y_conv_masked - y_masked))
     train_step = tf.train.AdamOptimizer(learning_rate).minimize(cost)
 
     # Add ops to save and restore all the variables
