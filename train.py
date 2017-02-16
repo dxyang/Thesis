@@ -72,7 +72,7 @@ def train(maskVecXoneYzero, squareSideLength, nCols, bottleneck, n_iterations=20
   #train_hideMiddle, Xtrain_hideMiddle, Ytrain_hideMiddle, \
   #test_hideMiddle, Xtest_hideMiddle, Ytest_hideMiddle = mnist_preprocessing.returnSquareData(squareSideLength=squareSideLength)
 
-  idxs = np.arange(10000)
+  idxs = np.arange(55000)
 
   train_input = train_hideRight
   train_output = train
@@ -90,14 +90,14 @@ def train(maskVecXoneYzero, squareSideLength, nCols, bottleneck, n_iterations=20
   keepTraining = False
   testing_cost = -1.0
   training_cost = -1.0
-  mse_test_generated = -1.0
-  mse_train_generated = -1.0
+  #mse_test_generated = -1.0
+  #mse_train_generated = -1.0
   mses_testSplits = np.zeros(10)
 
   with tf.Session() as sess:
     sess.run(tf.initialize_all_variables())
 
-    if (squareSideLength <= 8):
+    if (False):
       # Restore variables from disk.
       net.saver.restore(sess, os.getcwd() + "/tmp/model_square_%d.ckpt" %squareSideLength)
       print("Model restored.")
@@ -107,7 +107,7 @@ def train(maskVecXoneYzero, squareSideLength, nCols, bottleneck, n_iterations=20
 
     for i in range(n_iterations):
       # Shuffle the training data every time we run through the set
-      if i%200 == 0:
+      if i%(55000/50) == 0:
         np.random.shuffle(idxs)
         bufferedIdxs = np.concatenate((idxs, idxs[0:50]))
 
@@ -129,14 +129,40 @@ def train(maskVecXoneYzero, squareSideLength, nCols, bottleneck, n_iterations=20
                                                    net.keep_prob: 1.0})
         print("step %d, batch avg l2 %g"%(i, train_cost))
 
-
+      '''
       # Check if we're learning by 5000 iterations
       if (i==5000):
         train_cost = sess.run(net.cost, feed_dict={net.x: batch_in,
                                                    net.y: batch_out, 
                                                    net.keep_prob: 1.0})
-      
-        if (train_cost > 0.1):
+        if ((nCols <= 10) and (train_cost > 0.02)):
+          print("Not training :(")
+          keepTraining = True
+          break
+        elif ((nCols <= 17) and (train_cost > 0.05)):
+          print("Not training :(")
+          keepTraining = True
+          break
+      '''
+
+      # Check if we're learning by 15000 iterations
+      if (i==15000):
+        train_cost = sess.run(net.cost, feed_dict={net.x: batch_in,
+                                                   net.y: batch_out, 
+                                                   net.keep_prob: 1.0})
+        if ((nCols <= 10) and (train_cost > 0.01)):
+          print("Not training :(")
+          keepTraining = True
+          break
+        elif ((nCols <= 15) and (train_cost > 0.03)):
+          print("Not training :(")
+          keepTraining = True
+          break
+        elif ((nCols <= 20) and (train_cost > 0.06)):
+          print("Not training :(")
+          keepTraining = True
+          break
+        elif ((nCols == 21) and (train_cost > 0.065)):
           print("Not training :(")
           keepTraining = True
           break
@@ -146,16 +172,19 @@ def train(maskVecXoneYzero, squareSideLength, nCols, bottleneck, n_iterations=20
                                               net.y: test_output.T, 
                                               net.keep_prob: 1.0})
 
-    training_cost = sess.run(net.cost, feed_dict={net.x:train_input.T, 
-                                                  net.y:train_output.T,
-                                                  net.keep_prob: 1.0})
-    print("Final Whole Image Test Cost %g" %testing_cost)
-    print("Final Whole Image Training Cost %g" %training_cost)
+    training_cost_temp = np.zeros(5)
+    for i in range(5):
+      training_cost_temp[i] = sess.run(net.cost, feed_dict={net.x:train_input[:, i*11000:(i+1)*11000].T, 
+                                                            net.y:train_output[:, i*11000:(i+1)*11000].T,
+                                                            net.keep_prob: 1.0})
+    training_cost = np.mean(training_cost_temp)
+    print("Predicted Image Portion Test Cost %g" %testing_cost)
+    print("Predicted Image Portion Training Cost %g" %training_cost)
 
     # If this was a succesful train...
     if (not keepTraining):
       # Save the model
-      modelStr = "/tmp/model_square_%d.ckpt" %squareSideLength
+      modelStr = "/tmp/model_ncols_%d.ckpt" %nCols
       save_path = net.saver.save(sess, os.getcwd() + modelStr)
       print("Model saved in file: %s" % save_path)
 
@@ -164,21 +193,24 @@ def train(maskVecXoneYzero, squareSideLength, nCols, bottleneck, n_iterations=20
       testSplit_out = np.zeros((10, test_output.shape[0], test_output.shape[1]/10))  # ground truth of conv net output
       for i in range(10):
         for j in range(10):
-          testSplit_in[i, :, j*10:(j+1)*10] = test_input[:, j*100+i*10:j*100+(i+1)*10]
-          testSplit_out[i, :, j*10:(j+1)*10] = test_output[:, j*100+i*10:j*100+(i+1)*10]
+          testSplit_in[i, :, j*100:(j+1)*100] = test_input[:, j*1000+i*100:j*1000+(i+1)*100]
+          testSplit_out[i, :, j*100:(j+1)*100] = test_output[:, j*1000+i*100:j*1000+(i+1)*100]
+          #testSplit_in[i, :, j*10:(j+1)*10] = test_input[:, j*100+i*10:j*100+(i+1)*10]
+          #testSplit_out[i, :, j*10:(j+1)*10] = test_output[:, j*100+i*10:j*100+(i+1)*10]
 
         predicted_testSplit = sess.run(net.y_conv, feed_dict={net.x:testSplit_in[i].T, 
                                                             net.y:testSplit_out[i].T,
                                                             net.keep_prob: 1.0})
 
         testSplit_hat_hidden, testSplit_hat_X, testSplit_hat_Y = mnist_preprocessing.hideData(
-          predicted_testSplit.T, mnist_preprocessing.generateCenterSquareMask(squareSideLength)) #mnist_preprocessing.generateColumnMask(nCols))
+          predicted_testSplit.T, mnist_preprocessing.generateColumnMask(nCols)) #mnist_preprocessing.generateCenterSquareMask(squareSideLength))
         testSplit_hidden, testSplit_X, testSplit_Y = mnist_preprocessing.hideData(
-          testSplit_out[i], mnist_preprocessing.generateCenterSquareMask(squareSideLength)) #mnist_preprocessing.generateColumnMask(nCols))
+          testSplit_out[i], mnist_preprocessing.generateColumnMask(nCols)) #mnist_preprocessing.generateCenterSquareMask(squareSideLength))
 
         diff_testSplit = testSplit_hat_Y - testSplit_Y
         mses_testSplits[i] = np.mean(np.multiply(diff_testSplit, diff_testSplit))
 
+      '''
       # Get the whole predicted test and train image matrices
       predicted_test = sess.run(net.y_conv, feed_dict={net.x:test_input.T, net.y:test_output.T, net.keep_prob: 1.0})
       predicted_train = sess.run(net.y_conv, feed_dict={net.x:train_input.T, net.y:train_output.T, net.keep_prob: 1.0})
@@ -195,45 +227,47 @@ def train(maskVecXoneYzero, squareSideLength, nCols, bottleneck, n_iterations=20
       
       diff_train = Ytrain_hat_hidden - Y_train
       mse_train_generated = np.mean(np.multiply(diff_train, diff_train))
+      '''
 
-    return keepTraining, testing_cost, training_cost, mse_test_generated, mse_train_generated, mses_testSplits
+    return keepTraining, testing_cost, training_cost, mses_testSplits
 
-numTrials = 1
+numTrials = 28
 
 test_costs_data = np.zeros((numTrials))
 train_costs_data = np.zeros((numTrials))
-mses_test_generated_data = np.zeros((numTrials))
-mses_train_generated_data = np.zeros((numTrials))
+#mses_test_generated_data = np.zeros((numTrials))
+#mses_train_generated_data = np.zeros((numTrials))
 mses_testSplits_data = np.zeros((numTrials, 10))
 
+# all columns: np.arange(1, 29)
 for i in range(numTrials):
   keepTraining = True
 
   while (keepTraining):
-    nCols = 0
-    squareSideLength = (i+2)*2
+    nCols = i+1
+    squareSideLength = 0
     bottleneck = 128
-    maskVec = mnist_preprocessing.generateCenterSquareMask(squareSideLength) #mnist_preprocessing.generateColumnMask(nCols)
+    maskVec = mnist_preprocessing.generateColumnMask(nCols) #mnist_preprocessing.generateCenterSquareMask(squareSideLength)
 
-    print '------------Square Size: %d x %d -------------' %(squareSideLength , squareSideLength)
-    #print '------------Columns Removed: %d -------------' %nCols
+    #print '------------Square Size: %d x %d -------------' %(squareSideLength , squareSideLength)
+    print '------------Columns Removed: %d -------------' %nCols
     #print '------------Bottleneck: %d -------------' %bottleneck
 
+    #mses_test_generated_data[i], mses_train_generated_data[i], \
     keepTraining, test_costs_data[i], train_costs_data[i], \
-    mses_test_generated_data[i], mses_train_generated_data[i], \
     mses_testSplits_data[i] = train(maskVecXoneYzero= maskVec, squareSideLength=squareSideLength, nCols = nCols, bottleneck=bottleneck)
 
-  print '----- Test and Train Costs (MSE of whole image, whole dataset ----'
+  print '----- Test and Train Costs (MSE of generated image, whole dataset ----'
   print test_costs_data
   print train_costs_data
-  print '----- Test and Train Costs (MSE of generated image, whole dataset ----'
-  print mses_test_generated_data
-  print mses_train_generated_data
+  #print '----- Test and Train Costs (MSE of generated image, whole dataset ----'
+  #print mses_test_generated_data
+  #print mses_train_generated_data
   print '----- Test Splits (MSE of generated image, test splits ----'
   print mses_testSplits_data
 
-#np.save('data_test_costs_square.npy', test_costs_data)
-#np.save('data_train_costs_square.npy', train_costs_data)
+np.save('data_test_costs_square.npy', test_costs_data)
+np.save('data_train_costs_square.npy', train_costs_data)
 #np.save('data_mses_test_generated_square.npy', mses_test_generated_data)
 #np.save('data_mses_train_generated_square.npy', mses_train_generated_data)
-#np.save('data_mses_testSplits_square.npy', mses_testSplits_data)
+np.save('data_mses_testSplits_square.npy', mses_testSplits_data)

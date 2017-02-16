@@ -5,10 +5,11 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
+mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
 
 # packing and unpacking images
 def packcw(A,nr,nc):
-    x = (A.T).reshape(nr*nc,1)
+    x = (A.T).reshape(nr*nc)
     return x
 
 def unpackcw(x,nr,nc):
@@ -16,7 +17,7 @@ def unpackcw(x,nr,nc):
     return A.T
 
 def packrw(A,nr,nc):
-    x = A.reshape(nr*nc,1)
+    x = A.reshape(nr*nc)
     return x
 
 def unpackrw(x,nr,nc):
@@ -87,9 +88,7 @@ def returnHalfData(ncols):
     test = np.load('MNISTcwtest100.npy')
     test = test.astype(float)/255
     '''
-    mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
-    train = mnist.train.images
-    test = mnist.test.images
+    train, test = returnData()
     
     size = train.shape[0]
     n_train = train.shape[1]
@@ -112,9 +111,7 @@ def returnSquareData(squareSideLength):
     test = np.load('MNISTcwtest100.npy')
     test = test.astype(float)/255
     '''
-    mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
-    train = mnist.train.images
-    test = mnist.test.images
+    train, test = returnData()
 
     size = train.shape[0]
     n_train = train.shape[1]
@@ -131,15 +128,8 @@ def returnSquareData(squareSideLength):
 
 # let's get the data
 def returnData():
-    '''
-    train = np.load('MNISTcwtrain1000.npy')
-    train = train.astype(float)/255
-    test = np.load('MNISTcwtest100.npy')
-    test = test.astype(float)/255
-    '''
-    mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
-    train = mnist.train.images
-    test = mnist.test.images
+    train = np.copy(mnist.train.images.T)
+    test = np.copy(mnist.test.images.T)
 
     size = train.shape[0]
     n_train = train.shape[1]
@@ -148,5 +138,12 @@ def returnData():
     print '----MNIST dataset loaded----'
     print 'Train data: %d x %d' %(size, n_train)
     print 'Test data: %d x %d' %(size, n_test)
+
+    for i in range(n_train):
+        img = unpackrw(train[:, i], 28, 28)
+        train[:, i] = packcw(img, 28, 28)
+    for i in range(n_test):
+        img = unpackrw(test[:, i], 28, 28)
+        test[:, i] = packcw(img, 28, 28)
 
     return train, test

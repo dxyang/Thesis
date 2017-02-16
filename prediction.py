@@ -32,34 +32,36 @@ def predict_original():
 
 def predict(ncols, squareSideLength):
   train, test = mnist_preprocessing.returnData()
-  #train_hideRight, Xtrain_hideRight, Ytrain_hideRight, \
-  #test_hideRight, Xtest_hideRight, Ytest_hideRight = mnist_preprocessing.returnHalfData(ncols=ncols)
+  train_hideRight, Xtrain_hideRight, Ytrain_hideRight, \
+  test_hideRight, Xtest_hideRight, Ytest_hideRight = mnist_preprocessing.returnHalfData(ncols=ncols)
 
-  train_hideMiddle, Xtrain_hideMiddle, Ytrain_hideMiddle, \
-  test_hideMiddle, Xtest_hideMiddle, Ytest_hideMiddle = mnist_preprocessing.returnSquareData(squareSideLength=squareSideLength)
+  #train_hideMiddle, Xtrain_hideMiddle, Ytrain_hideMiddle, \
+  #test_hideMiddle, Xtest_hideMiddle, Ytest_hideMiddle = mnist_preprocessing.returnSquareData(squareSideLength=squareSideLength)
 
-  X_input = train_hideMiddle
+  X_input = train_hideRight
   Y_output = train
 
-  test_X_input = test_hideMiddle
+  test_X_input = test_hideRight
   test_Y_output = test
 
-  maskVec = mnist_preprocessing.generateCenterSquareMask(squareSideLength) #mnist_preprocessing.generateColumnMask(ncols)
+  maskVec = mnist_preprocessing.generateColumnMask(ncols) #mnist_preprocessing.generateCenterSquareMask(squareSideLength)
   tf.reset_default_graph()
   net = mnist_tf.create_network_autoencoder(maskVecXoneYzero=maskVec, bottleneck=128)
   with tf.Session() as sess:
     # Restore variables from disk.
-    net.saver.restore(sess, os.getcwd() + "/tmp/model_square_%d.ckpt" %squareSideLength)
+    net.saver.restore(sess, os.getcwd() + "/tmp/model_ncols_%d.ckpt" %ncols)
     print("Model restored.")
 
     # Whole Test and Training Accuracies
     testing_cost = sess.run(net.cost, feed_dict={net.x: test_X_input.T,
                                               net.y: test_Y_output.T, 
                                               net.keep_prob: 1.0})
-
-    training_cost = sess.run(net.cost, feed_dict={net.x:X_input.T, 
-                                                  net.y:Y_output.T,
-                                                  net.keep_prob: 1.0})
+    training_cost_temp = np.zeros(5)
+    for i in range(5):
+      training_cost_temp[i] = sess.run(net.cost, feed_dict={net.x:X_input[:, i*11000:(i+1)*11000].T, 
+                                                            net.y:Y_output[:, i*11000:(i+1)*11000].T,
+                                                            net.keep_prob: 1.0})
+    training_cost = np.mean(training_cost_temp)
 
     print("Final Test Cost %g" %testing_cost)
     print("Final Training Cost %g" %training_cost)
@@ -75,14 +77,17 @@ def predict(ncols, squareSideLength):
 
     # Generate stuff - hidden data
     predicted_test = sess.run(net.y_conv, feed_dict={net.x:test_X_input.T, net.y:test_Y_output.T, net.keep_prob: 1.0})
-    predicted_train = sess.run(net.y_conv, feed_dict={net.x:X_input.T, net.y:Y_output.T, net.keep_prob: 1.0})
+    predicted_train = np.zeros((55000, 784))
+    for i in range(5):
+      predicted_train[i*11000:(i+1)*11000, :] = sess.run(net.y_conv, feed_dict={net.x:X_input[:, i*11000:(i+1)*11000].T, 
+                                                      net.y:Y_output[:, i*11000:(i+1)*11000].T, 
+                                                      net.keep_prob: 1.0})
 
-    np.save('predictedTest_square_%d.npy' %squareSideLength, predicted_test.T)
-    np.save('predictedTrain_square_%d.npy' %squareSideLength, predicted_train.T)
+    np.save('predictedTest_ncols_%d.npy' %ncols, predicted_test.T)
+    np.save('predictedTrain_ncols_%d.npy' %ncols, predicted_train.T)
 
 
-for i in np.arange(2, 14, 1):
-  ncols = 0
-  squareSideLength = i*2
-  print squareSideLength
+for i in np.arange(1, 29):
+  ncols = 10
+  squareSideLength = 0
   predict(ncols=ncols, squareSideLength=squareSideLength)
