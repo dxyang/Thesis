@@ -30,13 +30,13 @@ def predict_original():
     np.save('predictedTest.npy', predicted_test.T)
 
 
-def predict():
+def predict(ncols, squareSideLength):
   train, test = mnist_preprocessing.returnData()
   #train_hideRight, Xtrain_hideRight, Ytrain_hideRight, \
-  #test_hideRight, Xtest_hideRight, Ytest_hideRight = mnist_preprocessing.returnHalfData(ncols=6)
+  #test_hideRight, Xtest_hideRight, Ytest_hideRight = mnist_preprocessing.returnHalfData(ncols=ncols)
 
   train_hideMiddle, Xtrain_hideMiddle, Ytrain_hideMiddle, \
-  test_hideMiddle, Xtest_hideMiddle, Ytest_hideMiddle = mnist_preprocessing.returnSquareData(squareSideLength=8)
+  test_hideMiddle, Xtest_hideMiddle, Ytest_hideMiddle = mnist_preprocessing.returnSquareData(squareSideLength=squareSideLength)
 
   X_input = train_hideMiddle
   Y_output = train
@@ -44,10 +44,12 @@ def predict():
   test_X_input = test_hideMiddle
   test_Y_output = test
 
-  net = mnist_tf.create_network_autoencoder(bottleneck=128)
+  maskVec = mnist_preprocessing.generateCenterSquareMask(squareSideLength) #mnist_preprocessing.generateColumnMask(ncols)
+  tf.reset_default_graph()
+  net = mnist_tf.create_network_autoencoder(maskVecXoneYzero=maskVec, bottleneck=128)
   with tf.Session() as sess:
     # Restore variables from disk.
-    net.saver.restore(sess, os.getcwd() + "/tmp/model_squareLength_8.ckpt")
+    net.saver.restore(sess, os.getcwd() + "/tmp/model_square_%d.ckpt" %squareSideLength)
     print("Model restored.")
 
     # Whole Test and Training Accuracies
@@ -75,7 +77,12 @@ def predict():
     predicted_test = sess.run(net.y_conv, feed_dict={net.x:test_X_input.T, net.y:test_Y_output.T, net.keep_prob: 1.0})
     predicted_train = sess.run(net.y_conv, feed_dict={net.x:X_input.T, net.y:Y_output.T, net.keep_prob: 1.0})
 
-    np.save('predictedTest.npy', predicted_test.T)
-    np.save('predictedTrain.npy', predicted_train.T)
+    np.save('predictedTest_square_%d.npy' %squareSideLength, predicted_test.T)
+    np.save('predictedTrain_square_%d.npy' %squareSideLength, predicted_train.T)
 
-predict()
+
+for i in np.arange(2, 14, 1):
+  ncols = 0
+  squareSideLength = i*2
+  print squareSideLength
+  predict(ncols=ncols, squareSideLength=squareSideLength)

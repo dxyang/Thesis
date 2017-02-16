@@ -3,6 +3,8 @@
 # -----------------------------------------------------------------------------
 
 import numpy as np
+import tensorflow as tf
+from tensorflow.examples.tutorials.mnist import input_data
 
 # packing and unpacking images
 def packcw(A,nr,nc):
@@ -79,11 +81,16 @@ def getStatistics(data, vectorMask):
 
 # let's get the data for halves
 def returnHalfData(ncols):
+    '''
     train = np.load('MNISTcwtrain1000.npy')
     train = train.astype(float)/255
     test = np.load('MNISTcwtest100.npy')
     test = test.astype(float)/255
-
+    '''
+    mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
+    train = mnist.train.images
+    test = mnist.test.images
+    
     size = train.shape[0]
     n_train = train.shape[1]
     n_test = test.shape[1]
@@ -99,10 +106,15 @@ def returnHalfData(ncols):
 
 # let's get the data for halves
 def returnSquareData(squareSideLength):
+    '''
     train = np.load('MNISTcwtrain1000.npy')
     train = train.astype(float)/255
     test = np.load('MNISTcwtest100.npy')
     test = test.astype(float)/255
+    '''
+    mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
+    train = mnist.train.images
+    test = mnist.test.images
 
     size = train.shape[0]
     n_train = train.shape[1]
@@ -119,10 +131,15 @@ def returnSquareData(squareSideLength):
 
 # let's get the data
 def returnData():
+    '''
     train = np.load('MNISTcwtrain1000.npy')
     train = train.astype(float)/255
     test = np.load('MNISTcwtest100.npy')
     test = test.astype(float)/255
+    '''
+    mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
+    train = mnist.train.images
+    test = mnist.test.images
 
     size = train.shape[0]
     n_train = train.shape[1]

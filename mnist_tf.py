@@ -561,7 +561,7 @@ def create_network_kinda_autoencoder(learning_rate=1e-3):
 
   return Net()
 
-def create_network_autoencoder(bottleneck, learning_rate=1e-3):
+def create_network_autoencoder(maskVecXoneYzero, bottleneck, learning_rate=1e-3):
   class Net:
     epsilon = 1e-3      # define small epsilon for batch normalization
     keep_prob = tf.placeholder(tf.float32)      # keep prob for dropout
@@ -625,13 +625,20 @@ def create_network_autoencoder(bottleneck, learning_rate=1e-3):
     
     y_conv = tf.reshape(h_d_conv1, [-1, 784])
 
-    '''
-    maskVec = mnist_preprocessing.generateColumnMask(14)
-    maskVecBool = np.ones((784,1)) == (np.ones((784,1)) - maskVec)
-    matrixMasks = np.repeat(maskVecBool, 50, axis=1)
-    y_conv_masked = tf.boolean_mask(y_conv, matrixMasks.T)
-    y_masked = tf.boolean_mask(y, matrixMasks.T)
-    '''
+    # this is now [784, batch_size]
+    y_conv_transpose = tf.matrix_transpose(y_conv)
+    y_transpose = tf.matrix_transpose(y)
+
+    maskVec = np.reshape(maskVecXoneYzero, 784)
+    maskVecBool = np.ones((784)) == (np.ones((784)) - maskVec)
+    y_conv_masked = tf.boolean_mask(y_conv_transpose, maskVecBool) 
+    y_masked = tf.boolean_mask(y_transpose, maskVecBool)
+
+    #print np.sum(maskVecBool)
+    #print y_conv_transpose.get_shape()
+    #print y_transpose.get_shape()
+    #print y_conv_masked.get_shape()
+    #print y_masked.get_shape()
     '''
     # ---- decoder ----
     strides=[1, 2, 2, 1]
@@ -652,10 +659,9 @@ def create_network_autoencoder(bottleneck, learning_rate=1e-3):
     y_conv = tf.reshape(h_d_conv1, [-1, 392])
     '''
 
-
     #cost = tf.reduce_mean(tf.mul(y_conv - y_, y_conv - y_)) #+ 0.0001*tf.reduce_sum(tf.abs(W_fc2))
-    cost = tf.reduce_mean(tf.mul(y_conv - y, y_conv - y))
-    #cost = tf.reduce_mean(tf.mul(y_conv_masked - y_masked, y_conv_masked - y_masked))
+    #cost = tf.reduce_mean(tf.mul(y_conv - y, y_conv - y))
+    cost = tf.reduce_mean(tf.mul(y_conv_masked - y_masked, y_conv_masked - y_masked))
     train_step = tf.train.AdamOptimizer(learning_rate).minimize(cost)
 
     # Add ops to save and restore all the variables
