@@ -32,6 +32,14 @@ def generateColumnMask(delColumns):
     maskVec = packcw(mask, 28, 28)
     return maskVec
 
+# generates a 784 element mask with columns deleted
+# from the left side of the image towards the right
+def generateColumnMask_FromLeft(delColumns):
+    mask = np.ones((28, 28))
+    mask[:, :delColumns] = 0
+    maskVec = packcw(mask, 28, 28)
+    return maskVec
+
 # generate a 784 element mask with a square, with side
 # length (sideLength), zero'd out of the middle
 def generateCenterSquareMask(sideLength):
@@ -80,7 +88,7 @@ def getStatistics(data, vectorMask):
     # return statistics
     return u_x, u_y, cov_x, cov_yx
 
-# let's get the data for halves
+# let's get the data for halves - hides columns starting from the right
 def returnHalfData(ncols):
     '''
     train = np.load('MNISTcwtrain1000.npy')
@@ -102,6 +110,29 @@ def returnHalfData(ncols):
     test_hideRight, Xtest_hideRight, Ytest_hideRight = hideData(test, generateColumnMask(ncols))
 
     return train_hideRight, Xtrain_hideRight, Ytrain_hideRight, test_hideRight, Xtest_hideRight, Ytest_hideRight
+
+# let's get the data for halves - hides columns starting from the left
+def returnHalfData_HideLeft(ncols):
+    '''
+    train = np.load('MNISTcwtrain1000.npy')
+    train = train.astype(float)/255
+    test = np.load('MNISTcwtest100.npy')
+    test = test.astype(float)/255
+    '''
+    train, test = returnData()
+    
+    size = train.shape[0]
+    n_train = train.shape[1]
+    n_test = test.shape[1]
+
+    print '----MNIST dataset loaded----'
+    print 'Train data: %d x %d' %(size, n_train)
+    print 'Test data: %d x %d' %(size, n_test)
+
+    train_hideLeft, Xtrain_hideLeft, Ytrain_hideLeft = hideData(train, generateColumnMask_FromLeft(ncols))
+    test_hideLeft, Xtest_hideLeft, Ytest_hideLeft = hideData(test, generateColumnMask_FromLeft(ncols))
+
+    return train_hideLeft, Xtrain_hideLeft, Ytrain_hideLeft, test_hideLeft, Xtest_hideLeft, Ytest_hideLeft
 
 # let's get the data for halves
 def returnSquareData(squareSideLength):
