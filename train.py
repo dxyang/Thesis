@@ -70,7 +70,7 @@ def train(maskVecXoneYzero, squareSideLength, nCols, bottleneck, n_iterations=20
   #test_hideRight, Xtest_hideRight, Ytest_hideRight = mnist_preprocessing.returnHalfData(ncols=nCols)
 
   train_hideLeft, Xtrain_hideLeft, Ytrain_hideLeft, \
-  test_hideLeft, Xtest_hideLeft, Ytest_hideLeft = mnist_preprocessing.returnHalfData(ncols=nCols)
+  test_hideLeft, Xtest_hideLeft, Ytest_hideLeft = mnist_preprocessing.returnHalfData_HideLeft(ncols=nCols)
 
   #train_hideMiddle, Xtrain_hideMiddle, Ytrain_hideMiddle, \
   #test_hideMiddle, Xtest_hideMiddle, Ytest_hideMiddle = mnist_preprocessing.returnSquareData(squareSideLength=squareSideLength)
@@ -100,7 +100,7 @@ def train(maskVecXoneYzero, squareSideLength, nCols, bottleneck, n_iterations=20
   with tf.Session() as sess:
     sess.run(tf.initialize_all_variables())
 
-    if (squareSideLength < 12):
+    if (nCols != 7):
       # Restore variables from disk.
       net.saver.restore(sess, os.getcwd() + "/tmp/model_ncols_fromleft_%d.ckpt" %nCols)
       print("Model restored.")
@@ -138,7 +138,11 @@ def train(maskVecXoneYzero, squareSideLength, nCols, bottleneck, n_iterations=20
         train_cost = sess.run(net.cost, feed_dict={net.x: batch_in,
                                                    net.y: batch_out, 
                                                    net.keep_prob: 1.0})
-        if ((nCols <= 10) and (train_cost > 0.02)):
+        if ((nCols <= 6) and (train_cost > 0.01)):
+          print("Not training :(")
+          keepTraining = True
+          break
+        elif ((nCols == 7) and (train_cost > 0.01)):
           print("Not training :(")
           keepTraining = True
           break
@@ -146,6 +150,11 @@ def train(maskVecXoneYzero, squareSideLength, nCols, bottleneck, n_iterations=20
           print("Not training :(")
           keepTraining = True
           break
+        elif ((nCols <= 19) and (train_cost > 0.06)):
+          print("Not training :(")
+          keepTraining = True
+          break
+
       '''
       # Check if we're learning by 15000 iterations
       if (i==15000):
@@ -207,7 +216,7 @@ def train(maskVecXoneYzero, squareSideLength, nCols, bottleneck, n_iterations=20
     # If this was a succesful train...
     if (not keepTraining):
       # Save the model
-      modelStr = "/tmp/model_square_%d.ckpt" %squareSideLength
+      modelStr = "/tmp/model_ncols_fromleft_%d.ckpt" %nCols
       save_path = net.saver.save(sess, os.getcwd() + modelStr)
       print("Model saved in file: %s" % save_path)
 
