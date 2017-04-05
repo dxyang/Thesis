@@ -48,6 +48,25 @@ def generateColumnMask(delColumns):
     maskVec = mask.reshape(3072)
     return maskVec
 
+# generate a 3072 element mask (32 x 32 x 3) with a square, 
+# with side length (sideLength), zero'd out of the middle
+def generateCenterSquareMask(sideLength):
+    mask = np.ones((3, 32, 32))
+    leftIdx = (32 - sideLength)/2
+    rightIdx = (32 + sideLength)/2
+    mask[:, leftIdx:rightIdx, leftIdx:rightIdx] = 0
+    maskVec = mask.reshape(3072)
+    return maskVec
+
+# let's get the data for removed squares for CIFAR10 data
+def returnSquareData(sideLength):
+    train, test, train_labels, test_labels = returnCIFARdata()
+    
+    train_hideCenter, Xtrain_hideCenter, Ytrain_hideCenter = hideData(train, generateCenterSquareMask(sideLength))
+    test_hideCenter, Xtest_hideCenter, Ytest_hideCenter = hideData(test, generateCenterSquareMask(sideLength))
+
+    return train_hideCenter, Xtrain_hideCenter, Ytrain_hideCenter, test_hideCenter, Xtest_hideCenter, Ytest_hideCenter
+
 # let's get the data for halves for CIFAR10 data
 def returnHalfData(ncols):
     train, test, train_labels, test_labels = returnCIFARdata()

@@ -5,7 +5,7 @@ import cifar_tf
 import cifar
 
 def predict(ncols, squareSideLength):
-  train, test = cifar.returnCIFARdata()
+  train, test, train_labels, test_labels = cifar.returnCIFARdata()
   train_hideRight, Xtrain_hideRight, Ytrain_hideRight, \
   test_hideRight, Xtest_hideRight, Ytest_hideRight = cifar.returnHalfData(ncols=ncols)
 
@@ -17,20 +17,24 @@ def predict(ncols, squareSideLength):
 
   maskVecXoneYzero = cifar.generateColumnMask(ncols)
   tf.reset_default_graph()
-  net = cifar_tf.create_autoencoder(maskVecXoneYzero=maskVecXoneYzero, bottleneck=384)
+  net = cifar_tf.create_autoencoder(maskVecXoneYzero=maskVecXoneYzero, bottleneck=768)
   with tf.Session() as sess:
     # Restore variables from disk.
     net.saver.restore(sess, os.getcwd() + "/tmp/model_cifar_ncols_%d.ckpt" %ncols)
     print("Model restored.")
 
     # Whole Test and Training Accuracies
-    testing_cost = sess.run(net.cost, feed_dict={net.x: test_X_input.T,
-                                              net.y: test_Y_output.T, 
+    testing_cost_temp = np.zeros(2)
+    for i in range(2):
+      testing_cost_temp[i] = sess.run(net.cost, feed_dict={net.x: test_X_input[:, i*5000:(i+1)*5000].T,
+                                              net.y: test_Y_output[:, i*5000:(i+1)*5000].T, 
                                               net.keep_prob: 1.0})
-    training_cost_temp = np.zeros(5)
-    for i in range(5):
-      training_cost_temp[i] = sess.run(net.cost, feed_dict={net.x:X_input[:, i*10000:(i+1)*10000].T, 
-                                                            net.y:Y_output[:, i*10000:(i+1)*10000].T,
+    testing_cost = np.mean(testing_cost_temp)
+
+    training_cost_temp = np.zeros(10)
+    for i in range(10):
+      training_cost_temp[i] = sess.run(net.cost, feed_dict={net.x:X_input[:, i*5000:(i+1)*5000].T, 
+                                                            net.y:Y_output[:, i*5000:(i+1)*5000].T,
                                                             net.keep_prob: 1.0})
     training_cost = np.mean(training_cost_temp)
 
@@ -40,9 +44,9 @@ def predict(ncols, squareSideLength):
     # Generate stuff - hidden data
     predicted_test = sess.run(net.y_conv, feed_dict={net.x:test_X_input.T, net.y:test_Y_output.T, net.keep_prob: 1.0})
     predicted_train = np.zeros((50000, 3072))
-    for i in range(5):
-      predicted_train[i*10000:(i+1)*10000, :] = sess.run(net.y_conv, feed_dict={net.x:X_input[:, i*10000:(i+1)*10000].T, 
-                                                      net.y:Y_output[:, i*10000:(i+1)*10000].T, 
+    for i in range(10):
+      predicted_train[i*5000:(i+1)*5000, :] = sess.run(net.y_conv, feed_dict={net.x:X_input[:, i*5000:(i+1)*5000].T, 
+                                                      net.y:Y_output[:, i*5000:(i+1)*5000].T, 
                                                       net.keep_prob: 1.0})
 
     np.save('predictedTest_cifar_ncols_%d.npy' %ncols, predicted_test.T)

@@ -44,12 +44,16 @@ def predict(ncols, squareSideLength):
   test_X_input = test_hideRight
   test_Y_output = test
 
-  maskVec = mnist_preprocessing.generateColumnMask(ncols) #mnist_preprocessing.generateCenterSquareMask(squareSideLength)
+  #maskVec = mnist_preprocessing.generateCenterSquareMask(squareSideLength) 
+  maskVec = mnist_preprocessing.generateColumnMask(ncols)
   tf.reset_default_graph()
   net = mnist_tf.create_network_autoencoder(maskVecXoneYzero=maskVec, bottleneck=128)
   with tf.Session() as sess:
     # Restore variables from disk.
     net.saver.restore(sess, os.getcwd() + "/tmp/model_ncols_%d.ckpt" %ncols)
+    #net.saver.restore(sess, os.getcwd() + "/tmp/model_square_%d.ckpt" %squareSideLength)
+    #net.saver.restore(sess, os.getcwd() + "/tmp/model_square_%d_adversarial.ckpt" %squareSideLength)
+
     print("Model restored.")
 
     # Whole Test and Training Accuracies
@@ -85,9 +89,13 @@ def predict(ncols, squareSideLength):
 
     np.save('predictedTest_ncols_%d.npy' %ncols, predicted_test.T)
     np.save('predictedTrain_ncols_%d.npy' %ncols, predicted_train.T)
+    #np.save('predictedTest_square_adversarial_%d.npy' %squareSideLength, predicted_test.T)
+    #np.save('predictedTrain_square_adversarial_%d.npy' %squareSideLength, predicted_train.T)
 
 
-for i in np.arange(1, 29):
-  ncols = 10
-  squareSideLength = 0
-  predict(ncols=ncols, squareSideLength=squareSideLength)
+predict(ncols=14, squareSideLength=0)
+
+#for i in np.arange(1, 29):
+#  ncols = 10
+#  squareSideLength = 0
+#  predict(ncols=ncols, squareSideLength=squareSideLength)

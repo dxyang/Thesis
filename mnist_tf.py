@@ -19,6 +19,9 @@ def bias_variable(shape):
 def conv2d(x, W):
   return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
 
+def leaky_relu(x, leak=0.1):
+  return tf.maximum(x, leak*x)
+
 def conv2d_nopad(x, W):
   return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='VALID')
 
@@ -561,6 +564,25 @@ def create_network_kinda_autoencoder(learning_rate=1e-3):
 
   return Net()
 
+'''
+# ---- decoder ----
+strides=[1, 2, 2, 1]
+batch_size = tf.shape(x)[0]
+
+# layer 2
+W_d_conv2 = weight_variable([5, 5, 32, 64])
+b_d_conv2 = bias_variable([32])
+h_d_deconv2 = tf.nn.conv2d_transpose(decoder_input, W_d_conv2, output_shape=[batch_size, 7, 14, 32], strides=strides, padding='SAME')
+h_d_conv2 = tf.nn.relu(h_d_deconv2 + b_d_conv2)
+
+# layer 1
+W_d_conv1 = weight_variable([5, 5, 1, 32])
+b_d_conv1 = bias_variable([1])
+h_d_deconv1 = tf.nn.conv2d_transpose(h_d_conv2, W_d_conv1, output_shape=[batch_size, 14, 28, 1], strides=strides, padding='SAME')
+h_d_conv1 = tf.nn.relu(h_d_deconv1 + b_d_conv1)
+y_conv = tf.reshape(h_d_conv1, [-1, 392])
+'''
+
 def create_network_autoencoder(maskVecXoneYzero, bottleneck, learning_rate=1e-3):
   class Net:
     epsilon = 1e-3      # define small epsilon for batch normalization
@@ -569,7 +591,7 @@ def create_network_autoencoder(maskVecXoneYzero, bottleneck, learning_rate=1e-3)
     # layer 0
     x = tf.placeholder(tf.float32, shape=[None, 784])
     y = tf.placeholder(tf.float32, shape=[None, 784])
-    x_image = tf.reshape(x, [-1,28,28,1]) # [-1,14,28,1]
+    x_image = tf.reshape(x, [-1,28,28,1]) #[-1,14,28,1])
     
     # ---- encoder ----
     # layer 1
@@ -587,7 +609,7 @@ def create_network_autoencoder(maskVecXoneYzero, bottleneck, learning_rate=1e-3)
     h_pool2 = max_pool_2x2(h_e_conv2)
 
     # ---- fully connected layer ----
-    dim_fc_in =  7 * 7 * 64 #4 * 7 * 64
+    dim_fc_in =  7 * 7 * 64 # 4 * 7 * 64
     W_e_fc1 = weight_variable([dim_fc_in, bottleneck])
     b_e_fc1 = bias_variable([bottleneck])
 
@@ -599,13 +621,20 @@ def create_network_autoencoder(maskVecXoneYzero, bottleneck, learning_rate=1e-3)
     h_e_fc1_drop = tf.nn.dropout(h_e_fc1, keep_prob)
 
     # decoder input
-    dim_fc_out = 7 * 7 * 64  #4 * 7 * 64
+    dim_fc_out = 7 * 7 * 64  # 4 * 7 * 64
     W_d_fc1 = weight_variable([bottleneck, dim_fc_out])
     b_d_fc1 = bias_variable([dim_fc_out])
-    h_d_fc1 = tf.nn.relu(tf.matmul(h_e_fc1_drop, W_d_fc1) + b_d_fc1)
+    h_d_fc1_pre = tf.matmul(h_e_fc1_drop, W_d_fc1)
+
+    # d_fc_scale1 = tf.Variable(tf.ones([dim_fc_out]))
+    # d_fc_beta1 = tf.Variable(tf.zeros([dim_fc_out]))
+    # fc_mean1, fc_var1 = tf.nn.moments(h_d_fc1_pre,[0])
+    # h_d_bn_fc1 = tf.nn.batch_normalization(h_d_fc1_pre,fc_mean1,fc_var1,d_fc_beta1,d_fc_scale1,epsilon)
+
+    h_d_fc1 = tf.nn.relu(h_d_fc1_pre + b_d_fc1)
     h_d_fc1_drop = tf.nn.dropout(h_d_fc1, keep_prob)
 
-    decoder_input = tf.reshape(h_d_fc1_drop, [-1, 7, 7, 64]) #tf.reshape(h_d_fc1_drop, [-1, 4, 7, 64])
+    decoder_input = tf.reshape(h_d_fc1_drop, [-1, 7, 7, 64])  #tf.reshape(h_d_fc1_drop, [-1, 4, 7, 64])
 
     # ---- decoder ----
     strides=[1, 2, 2, 1]
@@ -615,12 +644,24 @@ def create_network_autoencoder(maskVecXoneYzero, bottleneck, learning_rate=1e-3)
     W_d_conv2 = weight_variable([5, 5, 32, 64])
     b_d_conv2 = bias_variable([32])
     h_d_deconv2 = tf.nn.conv2d_transpose(decoder_input, W_d_conv2, output_shape=[batch_size, 14, 14, 32], strides=strides, padding='SAME')
+
+    # d_scale2 = tf.Variable(tf.ones([32]))
+    # d_beta2 = tf.Variable(tf.zeros([32]))
+    # batch_mean2, batch_var2 = tf.nn.moments(h_d_deconv2, axes=[0, 1, 2])
+    # bn2 = tf.nn.batch_normalization(h_d_deconv2, batch_mean2, batch_var2, d_beta2, d_scale2, epsilon)
+
     h_d_conv2 = tf.nn.relu(h_d_deconv2 + b_d_conv2)
 
     # layer 1
     W_d_conv1 = weight_variable([5, 5, 1, 32])
     b_d_conv1 = bias_variable([1])
     h_d_deconv1 = tf.nn.conv2d_transpose(h_d_conv2, W_d_conv1, output_shape=[batch_size, 28, 28, 1], strides=strides, padding='SAME')
+
+    # d_scale1 = tf.Variable(tf.ones([1]))
+    # d_beta1 = tf.Variable(tf.zeros([1]))
+    # batch_mean1, batch_var1 = tf.nn.moments(h_d_deconv1, axes=[0, 1, 2])
+    # bn1 = tf.nn.batch_normalization(h_d_deconv1, batch_mean1, batch_var1, d_beta1, d_scale1, epsilon)
+
     h_d_conv1 = tf.nn.relu(h_d_deconv1 + b_d_conv1)
     
     y_conv = tf.reshape(h_d_conv1, [-1, 784])
@@ -634,37 +675,180 @@ def create_network_autoencoder(maskVecXoneYzero, bottleneck, learning_rate=1e-3)
     y_conv_masked = tf.boolean_mask(y_conv_transpose, maskVecBool) 
     y_masked = tf.boolean_mask(y_transpose, maskVecBool)
 
+    '''
     #print np.sum(maskVecBool)
     #print y_conv_transpose.get_shape()
     #print y_transpose.get_shape()
     #print y_conv_masked.get_shape()
     #print y_masked.get_shape()
-    '''
-    # ---- decoder ----
-    strides=[1, 2, 2, 1]
-    batch_size = tf.shape(x)[0]
 
-    # layer 2
-    W_d_conv2 = weight_variable([5, 5, 32, 64])
-    b_d_conv2 = bias_variable([32])
-    h_d_deconv2 = tf.nn.conv2d_transpose(decoder_input, W_d_conv2, output_shape=[batch_size, 7, 14, 32], strides=strides, padding='SAME')
-    h_d_conv2 = tf.nn.relu(h_d_deconv2 + b_d_conv2)
-
-    # layer 1
-    W_d_conv1 = weight_variable([5, 5, 1, 32])
-    b_d_conv1 = bias_variable([1])
-    h_d_deconv1 = tf.nn.conv2d_transpose(h_d_conv2, W_d_conv1, output_shape=[batch_size, 14, 28, 1], strides=strides, padding='SAME')
-    h_d_conv1 = tf.nn.relu(h_d_deconv1 + b_d_conv1)
-    
-    y_conv = tf.reshape(h_d_conv1, [-1, 392])
+    g_vars = [W_e_conv1, b_e_conv1, W_e_conv2, b_e_conv2, W_e_fc1, b_e_fc1, 
+                W_d_fc1, b_d_fc1, W_d_conv2, b_d_conv2, W_d_conv1, b_d_conv1, 
+                d_fc_scale1, d_fc_beta1, d_scale2, d_beta2, d_scale1, d_beta1]
     '''
 
-    #cost = tf.reduce_mean(tf.mul(y_conv - y_, y_conv - y_)) #+ 0.0001*tf.reduce_sum(tf.abs(W_fc2))
+    # L2 masked reconstruction loss
     #cost = tf.reduce_mean(tf.mul(y_conv - y, y_conv - y))
     cost = tf.reduce_mean(tf.mul(y_conv_masked - y_masked, y_conv_masked - y_masked))
+
+
     train_step = tf.train.AdamOptimizer(learning_rate).minimize(cost)
 
     # Add ops to save and restore all the variables
     saver = tf.train.Saver()
 
   return Net()
+
+def create_network_autoencoder_adversarial(learning_rate=1e-3):
+  class Net:
+    epsilon = 1e-3      # define small epsilon for batch normalization
+    keep_prob = tf.placeholder(tf.float32)      # keep prob for dropout
+
+    # layer 0
+    x = tf.placeholder(tf.float32, shape=[None, 784])
+    y = tf.placeholder(tf.float32, shape=[None, 196])
+    x_image = tf.reshape(x, [-1,28,28,1]) #[-1,14,28,1])
+    y_image = tf.reshape(y, [-1,14,14,1])
+    
+    # ---- encoder ----
+    # layer 1
+    W_e_conv1 = weight_variable([4, 4, 1, 32])
+    b_e_conv1 = bias_variable([32])
+    h_e_conv1 = tf.nn.relu(conv2d(x_image, W_e_conv1) + b_e_conv1)
+    
+    h_pool1 = max_pool_2x2(h_e_conv1)
+
+    # layer 2
+    W_e_conv2 = weight_variable([4, 4, 32, 64])
+    b_e_conv2 = bias_variable([64])
+    h_e_conv2 = tf.nn.relu(conv2d(h_pool1, W_e_conv2) + b_e_conv2)
+
+    h_pool2 = max_pool_2x2(h_e_conv2)
+
+    # ---- fully connected layer ----
+    dim_fc_in =  7 * 7 * 64 # 4 * 7 * 64
+    W_e_fc1 = weight_variable([dim_fc_in, 512])
+    b_e_fc1 = bias_variable([512])
+
+    h_e_convs_flat = tf.reshape(h_pool2, [-1, dim_fc_in])
+    h_e_fc1 = tf.nn.relu(tf.matmul(h_e_convs_flat, W_e_fc1) + b_e_fc1)
+
+    # with drop out
+    keep_prob = tf.placeholder(tf.float32)
+    h_e_fc1_drop = tf.nn.dropout(h_e_fc1, keep_prob)
+
+    # decoder input
+    dim_fc_out = 7 * 7 * 64  # 4 * 7 * 64
+    W_d_fc1 = weight_variable([512, dim_fc_out])
+    b_d_fc1 = bias_variable([dim_fc_out])
+    h_d_fc1_pre = tf.matmul(h_e_fc1_drop, W_d_fc1)
+
+    # d_fc_scale1 = tf.Variable(tf.ones([dim_fc_out]))
+    # d_fc_beta1 = tf.Variable(tf.zeros([dim_fc_out]))
+    # fc_mean1, fc_var1 = tf.nn.moments(h_d_fc1_pre,[0])
+    # h_d_bn_fc1 = tf.nn.batch_normalization(h_d_fc1_pre,fc_mean1,fc_var1,d_fc_beta1,d_fc_scale1,epsilon)
+
+    h_d_fc1 = tf.nn.relu(h_d_fc1_pre + b_d_fc1)
+    h_d_fc1_drop = tf.nn.dropout(h_d_fc1, keep_prob)
+
+    decoder_input = tf.reshape(h_d_fc1_drop, [-1, 7, 7, 64])  #tf.reshape(h_d_fc1_drop, [-1, 4, 7, 64])
+
+    # ---- decoder ----
+    strides=[1, 2, 2, 1]
+    strides_same=[1, 1, 1, 1]
+    batch_size = tf.shape(x)[0]
+
+    # layer 2
+    W_d_conv2 = weight_variable([4, 4, 32, 64])
+    b_d_conv2 = bias_variable([32])
+    h_d_deconv2 = tf.nn.conv2d_transpose(decoder_input, W_d_conv2, output_shape=[batch_size, 14, 14, 32], strides=strides, padding='SAME')
+
+    d_scale2 = tf.Variable(tf.ones([32]))
+    d_beta2 = tf.Variable(tf.zeros([32]))
+    batch_mean2, batch_var2 = tf.nn.moments(h_d_deconv2, axes=[0, 1, 2])
+    bn2 = tf.nn.batch_normalization(h_d_deconv2, batch_mean2, batch_var2, d_beta2, d_scale2, epsilon)
+
+    h_d_conv2 = tf.nn.relu(bn2 + b_d_conv2)
+
+    # layer 1
+    W_d_conv1 = weight_variable([4, 4, 1, 32])
+    b_d_conv1 = bias_variable([1])
+    h_d_deconv1 = tf.nn.conv2d_transpose(h_d_conv2, W_d_conv1, output_shape=[batch_size, 14, 14, 1], strides=strides_same, padding='SAME')
+
+    d_scale1 = tf.Variable(tf.ones([1]))
+    d_beta1 = tf.Variable(tf.zeros([1]))
+    batch_mean1, batch_var1 = tf.nn.moments(h_d_deconv1, axes=[0, 1, 2])
+    bn1 = tf.nn.batch_normalization(h_d_deconv1, batch_mean1, batch_var1, d_beta1, d_scale1, epsilon)
+
+    h_d_conv1 = tf.nn.relu(bn1 + b_d_conv1)
+    y_conv = tf.reshape(h_d_conv1, [-1, 196])
+
+
+    g_vars = [W_e_conv1, b_e_conv1, W_e_conv2, b_e_conv2, W_e_fc1, b_e_fc1, 
+                W_d_fc1, b_d_fc1, W_d_conv2, b_d_conv2, W_d_conv1, b_d_conv1,
+                d_scale2, d_beta2, d_scale1, d_beta1]
+
+    # L2 masked reconstruction loss
+    cost = tf.reduce_mean(tf.mul(y_conv - y, y_conv - y))
+    #train_step = tf.train.AdamOptimizer(learning_rate).minimize(cost)
+
+    # ---- discriminator variables ----
+    global W_disc_conv1; W_disc_conv1 = weight_variable([4, 4, 1, 32])
+    global b_disc_conv1; b_disc_conv1 = bias_variable([32])
+
+    global W_disc_conv2; W_disc_conv2 = weight_variable([4, 4, 32, 64])
+    global b_disc_conv2; b_disc_conv2 = bias_variable([64])
+
+    global dim_fc_discriminator; dim_fc_discriminator = 7*7*64 #7*7*64
+    global W_disc_fc1; W_disc_fc1 = weight_variable([dim_fc_discriminator, 128])
+    global b_disc_fc1; b_disc_fc1 = bias_variable([128])
+
+    global W_discriminate; W_discriminate = weight_variable([128, 1])
+    global b_discriminate; b_discriminate = bias_variable([1])
+
+    d_vars = [W_disc_conv1, b_disc_conv1, W_disc_conv2, b_disc_conv2, 
+                W_disc_fc1, b_disc_fc1, W_discriminate, b_discriminate]
+
+    # ----- DISCRIMINATOR ADVERSARIAL STUFF ---- 
+    def discriminator(input):
+        # ---- convolutional layer 1 ----
+        h_disc_conv1_pre = conv2d(input, W_disc_conv1)
+        h_disc_conv1 = leaky_relu(h_disc_conv1_pre + b_disc_conv1)
+        # h_disc_pool1 = max_pool_2x2(h_disc_conv1)
+        # h_disc_conv1_flat = tf.reshape(h_disc_pool1, [-1, dim_fc_discriminator])
+
+        # ---- convolutional layer 2 ----
+        h_disc_conv2_pre = conv2d(h_disc_conv1, W_disc_conv2)
+        h_disc_conv2 = leaky_relu(h_disc_conv2_pre + b_disc_conv2)
+        h_disc_pool2 = max_pool_2x2(h_disc_conv2)
+        h_disc_conv2_flat = tf.reshape(h_disc_pool2, [-1, dim_fc_discriminator])
+
+        # ---- fully connected layer 1 ----
+        h_disc_fc1 = leaky_relu(tf.matmul(h_disc_conv2_flat, W_disc_fc1) + b_disc_fc1)
+        h_disc_fc1_drop = tf.nn.dropout(h_disc_fc1, 0.5)
+
+        # ---- discrimnate ----
+        d_discriminate = tf.sigmoid(tf.matmul(h_disc_fc1_drop, W_discriminate) + b_discriminate)
+        
+        return d_discriminate
+
+    discriminator_fake = discriminator(h_d_conv1)     # D(F((1-M)*x))
+    discriminator_real = discriminator(y_image)       # D(x)
+
+    avg_disc_fake = tf.reduce_mean(discriminator_fake)
+    avg_disc_real = tf.reduce_mean(discriminator_real)
+
+    d_loss = -tf.reduce_mean(tf.log(discriminator_real + 1e-10) + tf.log(1.0 - discriminator_fake + 1e-10))
+    g_loss = -tf.reduce_mean(tf.log(discriminator_fake + 1e-10))
+
+    total_cost = 0.999*cost + 0.001*g_loss
+
+    d_step = tf.train.AdamOptimizer(2e-4).minimize(d_loss, var_list=d_vars)
+    g_step = tf.train.AdamOptimizer(1e-3).minimize(g_loss, var_list=g_vars)
+    pretrain_step = tf.train.AdamOptimizer(1e-3).minimize(cost, var_list=g_vars)
+
+    # Add ops to save and restore all the variables
+    saver = tf.train.Saver()
+
+  return Net()
+
